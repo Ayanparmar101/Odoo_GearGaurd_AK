@@ -12,6 +12,10 @@ import AssetForm from './pages/AssetForm';
 import TeamList from './pages/TeamList';
 import TeamDetail from './pages/TeamDetail';
 import TeamForm from './pages/TeamForm';
+import CreateRequest from './pages/CreateRequest';
+import MyRequests from './pages/MyRequests';
+import KanbanBoard from './pages/KanbanBoard';
+import RequestDetail from './pages/RequestDetail';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -81,6 +85,12 @@ function App() {
           <Route path="teams/new" element={<TeamForm />} />
           <Route path="teams/:id" element={<TeamDetail />} />
           <Route path="teams/:id/edit" element={<TeamForm />} />
+          
+          {/* Maintenance Request Routes */}
+          <Route path="create-request" element={<CreateRequest />} />
+          <Route path="my-requests" element={<MyRequests />} />
+          <Route path="kanban" element={<KanbanBoard />} />
+          <Route path="maintenance-requests/:id" element={<RequestDetail />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

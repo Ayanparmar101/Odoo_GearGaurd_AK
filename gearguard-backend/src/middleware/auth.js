@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken';
 import { db } from '../config/firebase.js';
 import { collections } from '../models/firestore.js';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'gearguard-dev-secret-key-2025';
+
 export const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -11,7 +13,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     // Get user from Firestore
     const userDoc = await db.collection(collections.USERS).doc(decoded.userId).get();

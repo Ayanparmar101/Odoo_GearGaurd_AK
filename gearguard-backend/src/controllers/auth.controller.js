@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import { db } from '../config/firebase.js';
 import { collections } from '../models/firestore.js';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'gearguard-dev-secret-key-2025';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -152,8 +155,8 @@ export const register = async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId, role: userData.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
     );
 
     res.status(201).json({

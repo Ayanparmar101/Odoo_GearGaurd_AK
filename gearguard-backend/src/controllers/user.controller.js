@@ -1,10 +1,69 @@
 import { db } from '../config/firebase.js';
 import { COLLECTIONS } from '../constants/collections.js';
+import bcrypt from 'bcryptjs';
+
+// Create new user
+export const createUser = async (req, res) => {
+  try {
+    const { email, password, name, role, teamId, phone } = req.body;
+
+    // Validate required fields
+    if (!email || !password || !name || !role) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Check if email already exists
+    const existingUser = await db.collection(COLLECTIONS.USERS)
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+
+    if (!existingUser.empty) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+
+    // Verify team exists if teamId provided
+    if (teamId) {
+      const teamDoc = await db.collection(COLLECTIONS.TEAMS).doc(teamId).get();
+      if (!teamDoc.exists) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const newUser = {
+      email,
+      password: hashedPassword,
+      name,
+      role,
+      teamId: teamId || null,
+      phone: phone || null,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const userRef = await db.collection(COLLECTIONS.USERS).add(newUser);
+    const userDoc = await userRef.get();
+
+    // Return user without password
+    const userData = { id: userDoc.id, ...userDoc.data() };
+    delete userData.password;
+
+    res.status(201).json(userData);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ message: 'Failed to create user' });
+  }
+};
 
 // Get all users
 export const getAllUsers = async (req, res) => {
   try {
-    const { role, teamId } = req.query;
+    const { role, teamId, search } = req.query;
     
     let query = db.collection(COLLECTIONS.USERS);
     
@@ -19,12 +78,38 @@ export const getAllUsers = async (req, res) => {
     
     const snapshot = await query.get();
     
-    const users = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    let users = snapshot.docs.map(doc => {
+      const data = doc.data();
+      delete data.password; // Never return passwords
+      return {
+        id: doc.id,
+        ...data
+      };
+    });
+
+    // Apply search filter if provided
+    if (search) {
+      const searchLower = search.toLowerCase();
+      users = users.filter(user => 
+        user.name?.toLowerCase().includes(searchLower) ||
+        user.email?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Get team names for users
+    const usersWithTeams = await Promise.all(
+      users.map(async (user) => {
+        if (user.teamId) {
+          const teamDoc = await db.collection(COLLECTIONS.TEAMS).doc(user.teamId).get();
+          if (teamDoc.exists) {
+            user.teamName = teamDoc.data().name;
+          }
+        }
+        return user;
+      })
+    );
     
-    res.json(users);
+    res.json(usersWithTeams);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ message: 'Failed to fetch users' });

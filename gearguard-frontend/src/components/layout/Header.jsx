@@ -77,7 +77,7 @@ const Header = () => {
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                   onClick={() => {
                     setShowDropdown(false);
-                    // Navigate to profile page (to be implemented)
+                    navigate('/settings?tab=profile');
                   }}
                 >
                   <User className="w-4 h-4 mr-2" />
@@ -87,7 +87,7 @@ const Header = () => {
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                   onClick={() => {
                     setShowDropdown(false);
-                    // Navigate to settings page (to be implemented)
+                    navigate('/settings');
                   }}
                 >
                   <Settings className="w-4 h-4 mr-2" />

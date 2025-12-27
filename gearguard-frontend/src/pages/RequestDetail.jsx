@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, User, Clock, AlertCircle, MessageSquare, Send, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import { ArrowLeft, Package, User, Clock, AlertCircle, MessageSquare, Send, CheckCircle, XCircle, Calendar, Users } from 'lucide-react';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import ScheduleModal from '../components/ScheduleModal';
+import toast from 'react-hot-toast';
 
 const RequestDetail = () => {
   const { id } = useParams();
@@ -17,9 +18,15 @@ const RequestDetail = () => {
   const [newStatus, setNewStatus] = useState('');
   const [completionNotes, setCompletionNotes] = useState('');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [teams, setTeams] = useState([]);
+  const [selectedTeam, setSelectedTeam] = useState('');
 
   useEffect(() => {
     fetchRequest();
+    if (user.role === 'manager') {
+      fetchTeams();
+    }
   }, [id]);
 
   const fetchRequest = async () => {
@@ -31,6 +38,15 @@ const RequestDetail = () => {
       console.error('Error fetching request:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTeams = async () => {
+    try {
+      const response = await api.get('/teams');
+      setTeams(response.data);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
     }
   };
 
@@ -65,6 +81,24 @@ const RequestDetail = () => {
     } catch (error) {
       console.error('Error updating status:', error);
       alert(error.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  const handleAssignTeam = async () => {
+    if (!selectedTeam) return;
+    try {
+      console.log('Assigning team:', selectedTeam, 'to request:', id);
+      const response = await api.put(`/maintenance-requests/${id}`, {
+        assignedTeamId: selectedTeam
+      });
+      console.log('Team assignment response:', response.data);
+      toast.success('Team assigned successfully!');
+      setShowTeamModal(false);
+      setSelectedTeam('');
+      fetchRequest();
+    } catch (error) {
+      console.error('Error assigning team:', error);
+      toast.error(error.response?.data?.message || 'Failed to assign team');
     }
   };
 
@@ -150,6 +184,16 @@ const RequestDetail = () => {
               >
                 <Calendar className="w-4 h-4" />
                 Schedule
+              </button>
+            )}
+            {/* Assign Team Button */}
+            {user.role === 'manager' && (
+              <button
+                onClick={() => setShowTeamModal(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm flex items-center gap-2"
+              >
+                <Users className="w-4 h-4" />
+                Assign Team
               </button>
             )}
             {getAvailableStatusTransitions().map(status => (
@@ -344,6 +388,23 @@ const RequestDetail = () => {
                   </div>
                 </div>
               )}
+
+              {request.assignedTeamId && (
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">Assigned Team</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-green-200 rounded-full flex items-center justify-center">
+                      <Users className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{request.teamName || 'Team'}</p>
+                      {request.teamSpecialization && (
+                        <p className="text-xs text-gray-500">{request.teamSpecialization}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -423,6 +484,61 @@ const RequestDetail = () => {
         onClose={() => setShowScheduleModal(false)}
         onScheduled={fetchRequest}
       />
+
+      {/* Team Assignment Modal */}
+      {showTeamModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Assign Team to Request
+            </h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Team <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedTeam}
+                onChange={(e) => setSelectedTeam(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                <option value="">Choose a team...</option>
+                {teams.map(team => (
+                  <option key={team.id} value={team.id}>
+                    {team.name} {team.specialization && `- ${team.specialization}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {request.assignedTeamId && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Current Team:</strong> {request.teamName || 'Assigned'}
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowTeamModal(false);
+                  setSelectedTeam('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssignTeam}
+                disabled={!selectedTeam}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                <Users className="w-4 h-4" />
+                Assign Team
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

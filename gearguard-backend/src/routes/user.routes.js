@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticate, authorize } from '../middleware/auth.js';
 import {
+  createUser,
   getAllUsers,
   getUserById,
   updateUser,
@@ -15,6 +16,9 @@ router.use(authenticate);
 
 // GET /api/users/stats - Get user statistics (manager only)
 router.get('/stats', authorize(['manager']), getUserStats);
+
+// POST /api/users - Create new user (manager only)
+router.post('/', authorize(['manager']), createUser);
 
 // GET /api/users - Get all users
 router.get('/', getAllUsers);

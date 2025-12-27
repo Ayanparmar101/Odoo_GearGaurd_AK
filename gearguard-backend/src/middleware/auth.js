@@ -20,7 +20,12 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    const user = { id: userDoc.id, ...userDoc.data() };
+    const userData = userDoc.data();
+    const user = { 
+      userId: userDoc.id,
+      id: userDoc.id,
+      ...userData 
+    };
 
     if (!user.isActive) {
       return res.status(401).json({ error: 'Account is inactive' });

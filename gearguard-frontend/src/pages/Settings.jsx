@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Settings as SettingsIcon, Bell, Shield, Palette, Save, Database } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
+import api from '../services/api';
 
 const Settings = () => {
-  const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState('profile');
+  const { user, updateUser } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
   const [settings, setSettings] = useState({
     // Profile settings
     emailNotifications: true,
@@ -26,6 +29,61 @@ const Settings = () => {
     defaultPriority: 'medium',
     defaultRequestType: 'corrective'
   });
+  const [loading, setLoading] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: user?.name || '',
+    phone: user?.phone || '',
+    department: user?.department || ''
+  });
+
+  useEffect(() => {
+    // Load user settings from localStorage or API
+    const savedSettings = localStorage.getItem('gearguard-settings');
+    if (savedSettings) {
+      setSettings(JSON.parse(savedSettings));
+    }
+  }, []);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      // Save settings to localStorage
+      localStorage.setItem('gearguard-settings', JSON.stringify(settings));
+      
+      // If profile data changed, update user profile
+      if (activeTab === 'profile' && (
+        profileData.phone !== user?.phone || 
+        profileData.department !== user?.department
+      )) {
+        const response = await api.put(`/users/${user.id}`, {
+          phone: profileData.phone,
+          department: profileData.department
+        });
+        updateUser(response.data);
+      }
+      
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('Failed to save settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileChange = (key, value) => {
+    setProfileData({
+      ...profileData,
+      [key]: value
+    });
+  };
 
   const handleToggle = (key) => {
     setSettings({
@@ -39,11 +97,6 @@ const Settings = () => {
       ...settings,
       [key]: value
     });
-  };
-
-  const handleSave = () => {
-    // In a real app, this would save to backend
-    toast.success('Settings saved successfully');
   };
 
   const tabs = [
@@ -109,6 +162,32 @@ const Settings = () => {
                     />
                     <p className="mt-1 text-xs text-gray-500">
                       Contact your administrator to change your name
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Department
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.department}
+                      onChange={(e) => handleProfileChange('department', e.target.value)}
+                      placeholder="Engineering, IT, HR, etc."
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={profileData.phone}
+                      onChange={(e) => handleProfileChange('phone', e.target.value)}
+                      placeholder="+1 (555) 000-0000"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                     </p>
                   </div>
 
@@ -397,10 +476,11 @@ const Settings = () => {
             <div className="mt-8 pt-6 border-t">
               <button
                 onClick={handleSave}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" />
-                Save Settings
+                {loading ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
           </div>

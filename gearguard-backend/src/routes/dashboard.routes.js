@@ -1,11 +1,19 @@
 import express from 'express';
+import * as dashboardController from '../controllers/dashboard.controller.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Placeholder routes - will be implemented in Phase 4
-router.get('/stats', authenticate, async (req, res) => {
-  res.json({ message: 'Dashboard routes' });
-});
+// All routes require authentication
+router.use(authenticate);
+
+// Get comprehensive analytics
+router.get('/analytics', dashboardController.getAnalytics);
+
+// Get key performance indicators
+router.get('/kpis', dashboardController.getKPIs);
+
+// Get trends by category
+router.get('/trends', dashboardController.getTrendsByCategory);
 
 export default router;

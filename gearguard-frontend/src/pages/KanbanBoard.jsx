@@ -27,8 +27,8 @@ const KanbanBoard = () => {
       setLoading(true);
       const response = await api.get('/maintenance-requests');
       console.log('Fetched requests for Kanban:', response.data);
-      // Include all requests except pending and cancelled
-      setRequests(response.data.filter(r => r.status !== 'pending' && r.status !== 'cancelled'));
+      // Include all requests except cancelled - pending tasks go to "To Do"
+      setRequests(response.data.filter(r => r.status !== 'cancelled'));
     } catch (error) {
       console.error('Error fetching requests:', error);
     } finally {
@@ -79,6 +79,10 @@ const KanbanBoard = () => {
   };
 
   const getRequestsByStatus = (status) => {
+    // Map "pending" and "assigned" to the "assigned" column (To Do)
+    if (status === 'assigned') {
+      return requests.filter(req => req.status === 'assigned' || req.status === 'pending');
+    }
     return requests.filter(req => req.status === status);
   };
 

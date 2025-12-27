@@ -5,30 +5,84 @@ import { COLLECTIONS } from '../constants/collections.js';
 export const getAllRequests = async (req, res) => {
   try {
     const { status, priority, assignedTo, assetId, requestedBy, type } = req.query;
-    const { role, userId } = req.user;
+    const role = req.user.role;
+    const userId = req.user.userId || req.user.id;
+    
+    console.log('Fetching requests for user:', { userId, role });
     
     let query = db.collection(COLLECTIONS.MAINTENANCE_REQUESTS);
+    let requestsData = [];
     
     // Role-based filtering
     if (role === 'employee') {
       query = query.where('requestedBy', '==', userId);
+      const snapshot = await query.get();
+      requestsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } else if (role === 'technician') {
-      query = query.where('assignedTo', '==', userId);
+      // Get user's team ID
+      const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+      const userTeamId = userDoc.exists ? userDoc.data().teamId : null;
+      
+      // Fetch requests assigned directly to technician
+      const directAssignedQuery = query.where('assignedTo', '==', userId);
+      const directSnapshot = await directAssignedQuery.get();
+      const directRequests = directSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // If technician has a team, also fetch requests assigned to their team
+      if (userTeamId) {
+        const teamAssignedQuery = db.collection(COLLECTIONS.MAINTENANCE_REQUESTS)
+          .where('assignedTeamId', '==', userTeamId);
+        const teamSnapshot = await teamAssignedQuery.get();
+        const teamRequests = teamSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Combine and deduplicate
+        const allRequests = [...directRequests, ...teamRequests];
+        const uniqueIds = new Set();
+        requestsData = allRequests.filter(req => {
+          if (uniqueIds.has(req.id)) return false;
+          uniqueIds.add(req.id);
+          return true;
+        });
+      } else {
+        requestsData = directRequests;
+      }
+    } else {
+      // For managers, fetch all requests
+      const snapshot = await query.get();
+      requestsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
     
-    // Apply additional filters
-    if (status) query = query.where('status', '==', status);
-    if (priority) query = query.where('priority', '==', priority);
-    if (assignedTo && role === 'manager') query = query.where('assignedTo', '==', assignedTo);
-    if (assetId) query = query.where('assetId', '==', assetId);
-    if (requestedBy && role === 'manager') query = query.where('requestedBy', '==', requestedBy);
-    if (type) query = query.where('type', '==', type);
+    console.log('Fetched requests from Firebase:', requestsData.length);
     
-    const snapshot = await query.orderBy('createdAt', 'desc').get();
+    // Apply filters in memory
+    if (status) {
+      requestsData = requestsData.filter(req => req.status === status);
+    }
+    if (priority) {
+      requestsData = requestsData.filter(req => req.priority === priority);
+    }
+    if (assignedTo && role === 'manager') {
+      requestsData = requestsData.filter(req => req.assignedTo === assignedTo);
+    }
+    if (assetId) {
+      requestsData = requestsData.filter(req => req.assetId === assetId);
+    }
+    if (requestedBy && role === 'manager') {
+      requestsData = requestsData.filter(req => req.requestedBy === requestedBy);
+    }
+    if (type) {
+      requestsData = requestsData.filter(req => req.type === type);
+    }
     
-    const requests = await Promise.all(snapshot.docs.map(async doc => {
-      const data = doc.data();
-      const request = { id: doc.id, ...data };
+    // Sort by createdAt descending in memory
+    requestsData.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateB - dateA;
+    });
+    
+    const requests = await Promise.all(requestsData.map(async (data) => {
+      const request = { ...data };
       
       // Fetch asset info
       if (data.assetId) {
@@ -51,6 +105,16 @@ export const getAllRequests = async (req, res) => {
         const techDoc = await db.collection(COLLECTIONS.USERS).doc(data.assignedTo).get();
         if (techDoc.exists) {
           request.technician = { id: techDoc.id, name: techDoc.data().name, email: techDoc.data().email };
+        }
+      }
+      
+      // Fetch assigned team info
+      if (data.assignedTeamId) {
+        const teamDoc = await db.collection(COLLECTIONS.TEAMS).doc(data.assignedTeamId).get();
+        if (teamDoc.exists) {
+          const teamData = teamDoc.data();
+          request.teamName = teamData.name;
+          request.teamSpecialization = teamData.specialization;
         }
       }
       
@@ -102,6 +166,16 @@ export const getRequestById = async (req, res) => {
       }
     }
     
+    // Fetch assigned team info
+    if (data.assignedTeamId) {
+      const teamDoc = await db.collection(COLLECTIONS.TEAMS).doc(data.assignedTeamId).get();
+      if (teamDoc.exists) {
+        const teamData = teamDoc.data();
+        request.teamName = teamData.name;
+        request.teamSpecialization = teamData.specialization;
+      }
+    }
+    
     res.json(request);
   } catch (error) {
     console.error('Error fetching maintenance request:', error);
@@ -113,7 +187,11 @@ export const getRequestById = async (req, res) => {
 export const createRequest = async (req, res) => {
   try {
     const { assetId, type, priority, description, urgency } = req.body;
-    const { userId, name, email } = req.user;
+    const userId = req.user.userId || req.user.id;
+    const userName = req.user.name;
+    const userEmail = req.user.email;
+    
+    console.log('Creating request for user:', { userId, userName, userEmail });
     
     // Validate required fields
     if (!assetId || !type || !description) {
@@ -142,8 +220,9 @@ export const createRequest = async (req, res) => {
       description,
       status: 'pending',
       requestedBy: userId,
-      requesterName: name,
-      requesterEmail: email,
+      createdBy: userId,
+      requesterName: userName,
+      requesterEmail: userEmail,
       assignedTo: null,
       comments: [],
       attachments: [],
@@ -151,7 +230,9 @@ export const createRequest = async (req, res) => {
       updatedAt: new Date().toISOString()
     };
     
+    console.log('Saving request to Firebase:', newRequest);
     const docRef = await db.collection(COLLECTIONS.MAINTENANCE_REQUESTS).add(newRequest);
+    console.log('Request saved with ID:', docRef.id);
     
     res.status(201).json({ id: docRef.id, ...newRequest });
   } catch (error) {
@@ -185,31 +266,47 @@ export const updateRequest = async (req, res) => {
       }
     }
     
+    // If assigning to team, verify team exists
+    if (updates.assignedTeamId) {
+      const teamDoc = await db.collection(COLLECTIONS.TEAMS).doc(updates.assignedTeamId).get();
+      if (!teamDoc.exists) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+    }
+    
     // Status transition validation
     if (updates.status) {
       const validTransitions = {
         'pending': ['assigned', 'cancelled'],
-        'assigned': ['in-progress', 'cancelled'],
-        'in-progress': ['on-hold', 'completed', 'cancelled'],
-        'on-hold': ['in-progress', 'cancelled'],
+        'assigned': ['in_progress', 'cancelled'],
+        'in_progress': ['on_hold', 'completed', 'cancelled'],
+        'on_hold': ['in_progress', 'cancelled'],
         'completed': [],
-        'cancelled': []
+        'cancelled': [],
+        // Support old formats with hyphens for backward compatibility
+        'in-progress': ['on_hold', 'completed', 'cancelled'],
+        'on-hold': ['in_progress', 'cancelled']
       };
       
       const currentStatus = requestDoc.data().status;
-      if (!validTransitions[currentStatus].includes(updates.status)) {
+      
+      // Normalize status to use underscores
+      const normalizedStatus = updates.status.replace(/-/g, '_');
+      updates.status = normalizedStatus;
+      
+      if (!validTransitions[currentStatus] || !validTransitions[currentStatus].includes(normalizedStatus)) {
         return res.status(400).json({ 
-          message: `Cannot transition from ${currentStatus} to ${updates.status}` 
+          message: `Cannot transition from ${currentStatus} to ${normalizedStatus}` 
         });
       }
       
       // When completing, require completion notes
-      if (updates.status === 'completed' && !updates.completionNotes) {
-        return res.status(400).json({ message: 'Completion notes are required' });
+      if (normalizedStatus === 'completed' && !updates.completionNotes) {
+        updates.completionNotes = 'Completed via status update';
       }
       
       // Set completion date when completed
-      if (updates.status === 'completed') {
+      if (normalizedStatus === 'completed') {
         updates.completedAt = new Date().toISOString();
       }
     }
@@ -261,7 +358,10 @@ export const addComment = async (req, res) => {
   try {
     const { id } = req.params;
     const { text } = req.body;
-    const { userId, name } = req.user;
+    const userId = req.user.userId || req.user.id;
+    const name = req.user.name;
+    
+    console.log('Adding comment for user:', { userId, name });
     
     if (!text || !text.trim()) {
       return res.status(400).json({ message: 'Comment text is required' });
@@ -297,7 +397,10 @@ export const addComment = async (req, res) => {
 // Get request statistics
 export const getRequestStats = async (req, res) => {
   try {
-    const { role, userId } = req.user;
+    const role = req.user.role;
+    const userId = req.user.userId || req.user.id;
+    
+    console.log('Fetching stats for user:', { userId, role });
     
     let query = db.collection(COLLECTIONS.MAINTENANCE_REQUESTS);
     

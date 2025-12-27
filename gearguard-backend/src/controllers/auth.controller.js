@@ -112,6 +112,13 @@ export const demoLogin = async (req, res) => {
 
 export const register = async (req, res) => {
   try {
+    const { name, email, password, role, department, phone } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' });
+    }
+
     // Check if user exists
     const existingUserSnapshot = await db.collection(collections.USERS)
       .where('email', '==', email)

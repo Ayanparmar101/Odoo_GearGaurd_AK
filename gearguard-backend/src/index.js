@@ -13,6 +13,7 @@ import assetRoutes from './routes/asset.routes.js';
 import teamRoutes from './routes/team.routes.js';
 import maintenanceRoutes from './routes/maintenance.routes.js';
 import maintenanceRequestRoutes from './routes/maintenanceRequest.routes.js';
+import calendarRoutes from './routes/calendar.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -58,6 +59,7 @@ app.use('/api/assets', assetRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/maintenance-requests', maintenanceRequestRoutes);
+app.use('/api/calendar', calendarRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 // Error handling

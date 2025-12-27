@@ -10,6 +10,7 @@ const TeamForm = () => {
 
   const [formData, setFormData] = useState({
     name: '',
+    specialization: '',
     description: ''
   });
 
@@ -29,6 +30,7 @@ const TeamForm = () => {
       const team = response.data;
       setFormData({
         name: team.name || '',
+        specialization: team.specialization || '',
         description: team.description || ''
       });
     } catch (error) {
@@ -50,6 +52,7 @@ const TeamForm = () => {
   const validate = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = 'Team name is required';
+    if (!formData.specialization.trim()) newErrors.specialization = 'Specialization is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -109,6 +112,21 @@ const TeamForm = () => {
             placeholder="e.g., Engineering Team"
           />
           {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Specialization <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            name="specialization"
+            value={formData.specialization}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 border ${errors.specialization ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+            placeholder="e.g., HVAC, Electrical, Plumbing"
+          />
+          {errors.specialization && <p className="text-red-500 text-sm mt-1">{errors.specialization}</p>}
         </div>
 
         <div>

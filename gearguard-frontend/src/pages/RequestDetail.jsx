@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, User, Clock, AlertCircle, MessageSquare, Send, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Package, User, Clock, AlertCircle, MessageSquare, Send, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+import ScheduleModal from '../components/ScheduleModal';
 
 const RequestDetail = () => {
   const { id } = useParams();
@@ -15,6 +16,7 @@ const RequestDetail = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [completionNotes, setCompletionNotes] = useState('');
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   useEffect(() => {
     fetchRequest();
@@ -140,6 +142,16 @@ const RequestDetail = () => {
         </div>
         {canChangeStatus() && getAvailableStatusTransitions().length > 0 && (
           <div className="flex gap-2">
+            {/* Schedule Button */}
+            {!request.scheduledDate && (user.role === 'technician' || user.role === 'manager') && (
+              <button
+                onClick={() => setShowScheduleModal(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm flex items-center gap-2"
+              >
+                <Calendar className="w-4 h-4" />
+                Schedule
+              </button>
+            )}
             {getAvailableStatusTransitions().map(status => (
               <button
                 key={status}
@@ -197,6 +209,35 @@ const RequestDetail = () => {
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Completion Notes</p>
                   <p className="text-gray-900">{request.completionNotes}</p>
+                </div>
+              )}
+
+              {request.scheduledDate && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="w-5 h-5 text-purple-600" />
+                    <p className="font-semibold text-purple-900">Scheduled Maintenance</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-purple-600">Date & Time</p>
+                      <p className="font-medium text-purple-900">
+                        {new Date(request.scheduledDate).toLocaleString()}
+                      </p>
+                    </div>
+                    {request.estimatedDuration && (
+                      <div>
+                        <p className="text-sm text-purple-600">Duration</p>
+                        <p className="font-medium text-purple-900">{request.estimatedDuration} hours</p>
+                      </div>
+                    )}
+                  </div>
+                  {request.scheduleNotes && (
+                    <div className="mt-2">
+                      <p className="text-sm text-purple-600">Notes</p>
+                      <p className="text-purple-900">{request.scheduleNotes}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -374,6 +415,14 @@ const RequestDetail = () => {
           </div>
         </div>
       )}
+
+      {/* Schedule Modal */}
+      <ScheduleModal
+        request={request}
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        onScheduled={fetchRequest}
+      />
     </div>
   );
 };

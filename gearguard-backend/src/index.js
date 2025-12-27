@@ -72,9 +72,10 @@ app.set('io', io);
 app.get('/', (req, res) => {
   res.json({
     message: 'GearGuard API',
-    version: '1.0.0',
+    version: '1.0.1',
     status: 'running',
     database: 'Firebase Firestore',
+    timestamp: new Date().toISOString(),
   });
 });
 

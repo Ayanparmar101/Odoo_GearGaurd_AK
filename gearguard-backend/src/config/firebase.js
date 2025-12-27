@@ -1,17 +1,31 @@
 import admin from 'firebase-admin';
 import { readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 // Initialize Firebase Admin
-const serviceAccount = JSON.parse(
-  readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './serviceAccountKey.json', 'utf8')
-);
+let serviceAccount;
+
+// Check if FIREBASE_SERVICE_ACCOUNT env variable exists (for Railway/production)
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  console.log('✅ Using Firebase credentials from environment variable');
+} else {
+  // Fallback to file (for local development)
+  const keyPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './serviceAccountKey.json';
+  if (existsSync(keyPath)) {
+    serviceAccount = JSON.parse(readFileSync(keyPath, 'utf8'));
+    console.log('✅ Using Firebase credentials from file');
+  } else {
+    throw new Error('❌ Firebase service account credentials not found!');
+  }
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  projectId: process.env.FIREBASE_PROJECT_ID,
+  projectId: serviceAccount.project_id,
 });
 
 export const db = admin.firestore();

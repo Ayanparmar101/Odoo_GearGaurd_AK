@@ -12,8 +12,8 @@ const KanbanBoard = () => {
 
   const columns = {
     'assigned': { title: 'To Do', color: 'bg-gray-100' },
-    'in-progress': { title: 'In Progress', color: 'bg-blue-100' },
-    'on-hold': { title: 'On Hold', color: 'bg-yellow-100' },
+    'in_progress': { title: 'In Progress', color: 'bg-blue-100' },
+    'on_hold': { title: 'On Hold', color: 'bg-yellow-100' },
     'completed': { title: 'Completed', color: 'bg-green-100' }
   };
 
@@ -26,6 +26,8 @@ const KanbanBoard = () => {
     try {
       setLoading(true);
       const response = await api.get('/maintenance-requests');
+      console.log('Fetched requests for Kanban:', response.data);
+      // Include all requests except pending and cancelled
       setRequests(response.data.filter(r => r.status !== 'pending' && r.status !== 'cancelled'));
     } catch (error) {
       console.error('Error fetching requests:', error);

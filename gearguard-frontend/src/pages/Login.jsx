@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Shield, Wrench } from 'lucide-react';
+import { Shield, Wrench, Mail, Lock, User } from 'lucide-react';
 import { authService } from '../services/auth.service';
 import { useAuthStore } from '../store/authStore';
 
@@ -9,7 +9,39 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuthStore();
   const [loading, setLoading] = useState(false);
-  const [showDemoOptions, setShowDemoOptions] = useState(true);
+  const [showDemoOptions, setShowDemoOptions] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await authService.login(formData.email, formData.password);
+      login(data.user, data.token);
+      toast.success(`Welcome back, ${data.user.name}!`);
+      navigate('/');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDemoLogin = async (role) => {
     setLoading(true);
@@ -37,13 +69,105 @@ const Login = () => {
           <p className="text-gray-600">Maintenance Management System</p>
         </div>
 
-        {/* Demo Login Card */}
+        {/* Login Card */}
         <div className="card p-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">
-            Demo Login
-          </h2>
+          {!showDemoOptions ? (
+            <>
+              <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">
+                Sign In
+              </h2>
 
-          <div className="space-y-3">
+              <form onSubmit={handleLogin} className="space-y-4">
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="your.email@example.com"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {loading ? 'Signing In...' : 'Sign In'}
+                </button>
+              </form>
+
+              <div className="mt-6 space-y-4">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">or</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowDemoOptions(true)}
+                  className="w-full border-2 border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Try Demo Mode
+                </button>
+
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">
+                    Don't have an account?{' '}
+                    <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
+                      Sign up
+                    </Link>
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Demo Login
+                </h2>
+                <button
+                  onClick={() => setShowDemoOptions(false)}
+                  className="text-sm text-primary-600 hover:text-primary-700"
+                >
+                  ← Back to Login
+                </button>
+              </div>
+
+              <div className="space-y-3">
             {/* Employee Demo */}
             <button
               onClick={() => handleDemoLogin('employee')}
@@ -104,6 +228,8 @@ const Login = () => {
               For demo purposes. No password required.
             </p>
           </div>
+          </>
+          )}
         </div>
 
         {/* Footer */}

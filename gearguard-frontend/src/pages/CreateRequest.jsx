@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 
 const CreateRequest = () => {
   const navigate = useNavigate();
@@ -25,9 +26,12 @@ const CreateRequest = () => {
   const fetchAssets = async () => {
     try {
       const response = await api.get('/assets');
+      console.log('Fetched assets:', response.data);
+      console.log('Number of assets:', response.data.length);
       setAssets(response.data);
     } catch (error) {
       console.error('Error fetching assets:', error);
+      toast.error('Failed to load assets');
     }
   };
 
@@ -55,11 +59,13 @@ const CreateRequest = () => {
 
     try {
       setLoading(true);
-      await api.post('/maintenance-requests', formData);
+      const response = await api.post('/maintenance-requests', formData);
+      console.log('Request created:', response.data);
+      toast.success('Maintenance request created successfully!');
       navigate('/my-requests');
     } catch (error) {
       console.error('Error creating request:', error);
-      alert(error.response?.data?.message || 'Failed to create maintenance request');
+      toast.error(error.response?.data?.message || 'Failed to create maintenance request');
     } finally {
       setLoading(false);
     }
@@ -95,7 +101,10 @@ const CreateRequest = () => {
             <option value="">Choose an asset...</option>
             {assets.map(asset => (
               <option key={asset.id} value={asset.id}>
-                {asset.name} ({asset.assetTag}) - {asset.category}
+                {asset.name}
+                {asset.assetTag && ` (${asset.assetTag})`}
+                {asset.category && ` - ${asset.category}`}
+                {asset.location && ` - ${asset.location}`}
               </option>
             ))}
           </select>

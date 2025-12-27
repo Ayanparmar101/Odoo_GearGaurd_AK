@@ -32,12 +32,17 @@ const Login = () => {
 
     setLoading(true);
     try {
+      console.log('Attempting login with:', { email: formData.email });
       const data = await authService.login(formData.email, formData.password);
+      console.log('Login successful:', data);
       login(data.user, data.token);
       toast.success(`Welcome back, ${data.user.name}!`);
       navigate('/');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Login failed');
+      console.error('Login error:', error);
+      console.error('Error response:', error.response?.data);
+      const errorMessage = error.response?.data?.error || error.message || 'Login failed. Please check your credentials.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

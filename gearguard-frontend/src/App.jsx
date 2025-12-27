@@ -12,10 +12,13 @@ import AssetForm from './pages/AssetForm';
 import TeamList from './pages/TeamList';
 import TeamDetail from './pages/TeamDetail';
 import TeamForm from './pages/TeamForm';
+<<<<<<< HEAD
 import CreateRequest from './pages/CreateRequest';
 import MyRequests from './pages/MyRequests';
 import KanbanBoard from './pages/KanbanBoard';
 import RequestDetail from './pages/RequestDetail';
+=======
+>>>>>>> ca34512002bae810b576b93dc81bac8d6c25cade
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -85,12 +88,15 @@ function App() {
           <Route path="teams/new" element={<TeamForm />} />
           <Route path="teams/:id" element={<TeamDetail />} />
           <Route path="teams/:id/edit" element={<TeamForm />} />
+<<<<<<< HEAD
           
           {/* Maintenance Request Routes */}
           <Route path="create-request" element={<CreateRequest />} />
           <Route path="my-requests" element={<MyRequests />} />
           <Route path="kanban" element={<KanbanBoard />} />
           <Route path="maintenance-requests/:id" element={<RequestDetail />} />
+=======
+>>>>>>> ca34512002bae810b576b93dc81bac8d6c25cade
         </Route>
 
         <Route path="*" element={<NotFound />} />

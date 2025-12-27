@@ -6,6 +6,12 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import EmployeeDashboard from './pages/employee/Dashboard';
 import TechnicianDashboard from './pages/technician/Dashboard';
 import ManagerDashboard from './pages/manager/Dashboard';
+import AssetList from './pages/AssetList';
+import AssetDetail from './pages/AssetDetail';
+import AssetForm from './pages/AssetForm';
+import TeamList from './pages/TeamList';
+import TeamDetail from './pages/TeamDetail';
+import TeamForm from './pages/TeamForm';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -63,7 +69,18 @@ function App() {
           }
         >
           <Route index element={getDashboard()} />
-          {/* Additional routes will be added in subsequent phases */}
+          
+          {/* Asset Management Routes */}
+          <Route path="assets" element={<AssetList />} />
+          <Route path="assets/new" element={<AssetForm />} />
+          <Route path="assets/:id" element={<AssetDetail />} />
+          <Route path="assets/:id/edit" element={<AssetForm />} />
+          
+          {/* Team Management Routes */}
+          <Route path="teams" element={<TeamList />} />
+          <Route path="teams/new" element={<TeamForm />} />
+          <Route path="teams/:id" element={<TeamDetail />} />
+          <Route path="teams/:id/edit" element={<TeamForm />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
